@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'add_event_screen.dart';
+import 'checkin_screen.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -23,27 +25,44 @@ class _EventsScreenState extends State<EventsScreen> {
         await FirebaseFirestore.instance.collection('events').get();
     setState(() {
       events = snapshot;
-      filteredEvents = snapshot.docs;
+      searchEvents(''); // Apply the current filter after loading events
     });
   }
 
   void searchEvents(String value) {
     if (value.isEmpty) {
       setState(() {
-        filteredEvents = events?.docs ?? [];
+        filteredEvents = events?.docs
+                .where((doc) => !doc.data().containsKey('deleted_at'))
+                .toList() ??
+            [];
       });
       return;
     }
 
     setState(() {
       filteredEvents = events?.docs
-              .where((doc) => doc['name']
-                  .toString()
-                  .toLowerCase()
-                  .contains(value.toLowerCase()))
+              .where((doc) =>
+                  doc['name']
+                      .toString()
+                      .toLowerCase()
+                      .contains(value.toLowerCase()) &&
+                  !doc.data().containsKey('deleted_at'))
               .toList() ??
           [];
     });
+  }
+
+  softDeleteEvent(String id, String name) async {
+    await FirebaseFirestore.instance.collection('events').doc(id).update({
+      'deleted_at': Timestamp.now(),
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Event $name has been deleted.'),
+      ),
+    );
+    getEvents(); // Reload events after deletion
   }
 
   @override
@@ -82,30 +101,92 @@ class _EventsScreenState extends State<EventsScreen> {
                     itemBuilder: (context, index) {
                       final event = filteredEvents[index];
                       return Card(
-                        child: ListTile(
-                          title: Text(event['name']),
-                          subtitle: Text((event['start_date'] as Timestamp)
-                              .toDate()
-                              .toString()),
-                          tileColor: event['status'] == 'Published'
-                              ? Colors.green[100]
-                              : event['status'] == 'Draft'
-                                  ? Colors.blue[100]
-                                  : Colors.red[100],
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              await FirebaseFirestore.instance
-                                  .collection('events')
-                                  .doc(event.id)
-                                  .delete();
-                              getEvents();
-                            },
-                          ),
+                        color: event['start_date']
+                                .toDate()
+                                .isBefore(DateTime.now())
+                            ? Colors.grey[500]
+                            : null,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ListTile(
+                                title: Text(event['name']),
+                                subtitle: Text(
+                                    '${event['start_date'].toDate().toString().substring(0, 16)} - ${event['end_date'].toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${event['capacity']} people'),
+                              ),
+                            ),
+                            //button check in
+                            IconButton(
+                              icon: const Icon(Icons.check),
+                              onPressed: () {
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) {
+                                  return CheckinScreen(event: event);
+                                }));
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () {
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) {
+                                  return AddEventScreen(event: event);
+                                })).then((value) {
+                                  if (value == true) {
+                                    getEvents();
+                                  }
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () async {
+                                await showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: const Text('Delete Event'),
+                                      content: Text(
+                                          'Are you sure you want to delete ${event['name']}?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            softDeleteEvent(event.id,
+                                                event['name'].toString());
+                                            Navigator.pop(context, true);
+                                          },
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       );
                     },
                   ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber,
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (context) {
+            return AddEventScreen();
+          })).then((value) {
+            if (value == true) {
+              getEvents();
+            }
+          });
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
