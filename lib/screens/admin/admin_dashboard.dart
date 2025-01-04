@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'events_screen.dart';
-import 'add_event_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -68,17 +67,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           NavigationDestination(
               icon: Icon(Icons.notifications), label: 'Notifications'),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber,
-        onPressed: () {
-          if (currentPageIndex == 0) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) {
-              return const AddEventScreen();
-            }));
-          }
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
