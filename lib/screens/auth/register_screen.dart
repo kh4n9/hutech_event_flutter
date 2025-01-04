@@ -28,6 +28,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         snapshot.docs.first.reference.update({
           'email': emailController.text,
         });
+        FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: emailController.text,
+          password: passwordController.text,
+        );
         Navigator.pop(context);
       });
     } catch (e) {

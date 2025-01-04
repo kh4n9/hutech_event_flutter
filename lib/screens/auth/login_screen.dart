@@ -70,13 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 children: [
                   TextField(
-                    style: TextStyle(fontSize: 20),
                     controller: usernameController,
                     decoration: InputDecoration(
                       labelText: 'Username/MSSV',
                       border: InputBorder.none,
                       focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.teal, width: 2),
+                        borderSide: BorderSide(color: Colors.amber, width: 2),
                       ),
                     ),
                   ),
@@ -88,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       labelText: 'Password',
                       border: InputBorder.none,
                       focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.teal, width: 2),
+                        borderSide: BorderSide(color: Colors.amber, width: 2),
                       ),
                     ),
                   ),
@@ -100,8 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(height: 20),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal[500],
-                shadowColor: Colors.teal[700],
+                backgroundColor: Colors.amber[500],
+                shadowColor: Colors.amber[700],
                 elevation: 10,
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
                 shape: RoundedRectangleBorder(
