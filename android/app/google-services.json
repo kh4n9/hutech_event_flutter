@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "297023252109",
+    "project_id": "hutechevent",
+    "storage_bucket": "hutechevent.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297023252109:android:92ceb46b48ad40cd0664c4",
+        "android_client_info": {
+          "package_name": "com.example.hutech_event_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCygps46OmTEBF-tnscFfDzWPLIJKQ3IqQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
