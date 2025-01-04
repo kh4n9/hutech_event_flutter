@@ -63,27 +63,56 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Login', style: TextStyle(fontSize: 24)),
-            TextField(
-              controller: usernameController,
-              decoration: InputDecoration(
-                labelText: 'Username/MSSV',
-              ),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
+            Image.asset('images/background-hutech-removebg.png', width: 200),
+            SizedBox(height: 20),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  TextField(
+                    style: TextStyle(fontSize: 20),
+                    controller: usernameController,
+                    decoration: InputDecoration(
+                      labelText: 'Username/MSSV',
+                      border: InputBorder.none,
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.teal, width: 2),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  TextField(
+                    obscureText: true,
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      border: InputBorder.none,
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.teal, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             if (error.isNotEmpty)
               Text(error, style: TextStyle(color: Colors.red)),
-            SizedBox(height: 10),
+            SizedBox(height: 20),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal[500],
+                shadowColor: Colors.teal[700],
+                elevation: 10,
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: () {
                 login();
               },
-              child: Text('Login'),
+              child: Text('Login',
+                  style: TextStyle(fontSize: 20, color: Colors.white)),
             ),
           ],
         ),

@@ -14,28 +14,8 @@ class DecistionsTree extends StatefulWidget {
 }
 
 class _DecistionsTreeState extends State<DecistionsTree> {
-  createFirstUser() async {
-    try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('users').get();
-      if (snapshot.docs.isEmpty) {
-        print('Creating first user');
-        await FirebaseFirestore.instance.collection('users').add({
-          'email': null,
-          'username': 'admin',
-          'role': 'admin',
-        });
-      } else {
-        print('First user already exists');
-      }
-    } catch (e) {
-      print(e);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    createFirstUser();
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       FirebaseFirestore.instance

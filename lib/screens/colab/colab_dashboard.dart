@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ColabDashboard extends StatefulWidget {
@@ -8,10 +9,43 @@ class ColabDashboard extends StatefulWidget {
 }
 
 class _ColabDashboardState extends State<ColabDashboard> {
+  logout() async {
+    FirebaseAuth.instance.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Text('Colab Dashboard'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Colab Dashboard'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              logout();
+              Navigator.pushReplacementNamed(context, '/');
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: Center(
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            children: [
+              Container(
+                alignment: Alignment.topLeft,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/colab/event');
+                  },
+                  child: const Text('Event'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
