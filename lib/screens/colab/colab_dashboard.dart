@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:hutech_event_flutter/screens/colab/event/events_screen.dart';
+import 'package:hutech_event_flutter/screens/colab/event/setting_screen.dart';
 
 class ColabDashboard extends StatefulWidget {
   const ColabDashboard({Key? key}) : super(key: key);
@@ -9,6 +11,7 @@ class ColabDashboard extends StatefulWidget {
 }
 
 class _ColabDashboardState extends State<ColabDashboard> {
+  int currentPageIndex = 0;
   logout() async {
     FirebaseAuth.instance.signOut();
   }
@@ -29,23 +32,31 @@ class _ColabDashboardState extends State<ColabDashboard> {
           ),
         ],
       ),
-      body: Center(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            children: [
-              Container(
-                alignment: Alignment.topLeft,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/colab/event');
-                  },
-                  child: const Text('Event'),
-                ),
-              ),
-            ],
+      body: IndexedStack(
+        index: currentPageIndex,
+        children: const <Widget>[
+          EventsScreen(),
+          SettingScreen(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        onDestinationSelected: (int index) {
+          setState(() {
+            currentPageIndex = index;
+          });
+        },
+        indicatorColor: Colors.amber,
+        selectedIndex: currentPageIndex,
+        destinations: const <Widget>[
+          NavigationDestination(
+            icon: Icon(Icons.event),
+            label: 'Events',
           ),
-        ),
+          NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }
