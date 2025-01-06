@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/decistions_tree.dart';
 import 'package:hutech_event_flutter/screens/auth/register_screen.dart';
 
@@ -54,6 +55,54 @@ class _LoginScreenState extends State<LoginScreen> {
         error = e.toString();
       });
     }
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        return; // The user canceled the sign-in
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+// Check if the user's email exists in the Firestore users collection
+      QuerySnapshot userQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: googleUser.email)
+          .get();
+
+      if (userQuery.docs.isEmpty) {
+        setState(() {
+          error = 'Account not linked with Google';
+        });
+        await GoogleSignIn().signOut();
+        return;
+      }
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DecistionsTree(),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+      });
+      await GoogleSignIn().signOut();
+    }
+  }
+
+  Future<void> signOut() async {
+    await FirebaseAuth.instance.signOut();
+    await GoogleSignIn().signOut();
+    setState(() {
+      error = '';
+    });
   }
 
   @override
@@ -111,6 +160,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 login();
               },
               child: Text('Login',
+                  style: TextStyle(fontSize: 20, color: Colors.white)),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[500],
+                shadowColor: Colors.blue[700],
+                elevation: 10,
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                signInWithGoogle();
+              },
+              child: Text('Login with Google',
                   style: TextStyle(fontSize: 20, color: Colors.white)),
             ),
           ],
