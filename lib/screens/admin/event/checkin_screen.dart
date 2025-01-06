@@ -67,6 +67,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
     });
 
     try {
+      // Check capacity first
+      final currentCheckins = await FirebaseFirestore.instance
+          .collection('checkins')
+          .where('event_id', isEqualTo: widget.event.id)
+          .count()
+          .get();
+
+      final eventCapacity = widget.event['capacity'] as num;
+      if (currentCheckins.count! >= eventCapacity) {
+        _showError('Event has reached maximum capacity');
+        return;
+      }
+
       // Get student data
       final studentQuery = await FirebaseFirestore.instance
           .collection('students')

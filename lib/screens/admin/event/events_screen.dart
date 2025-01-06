@@ -69,6 +69,7 @@ class _EventsScreenState extends State<EventsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -100,12 +101,23 @@ class _EventsScreenState extends State<EventsScreen> {
                     itemCount: filteredEvents.length,
                     itemBuilder: (context, index) {
                       final event = filteredEvents[index];
+                      final now = DateTime.now();
+                      final startDate = event['start_date'].toDate();
+                      final endDate = event['end_date'].toDate();
+
+                      // Determine card color based on event status
+                      Color? cardColor;
+                      if (endDate.isBefore(now)) {
+                        cardColor = Colors.grey[200]; // Completed event
+                      } else if (startDate.isBefore(now) &&
+                          endDate.isAfter(now)) {
+                        cardColor = Colors.green[100]; // Ongoing event
+                      } else if (startDate.isAfter(now)) {
+                        cardColor = Colors.amber[100]; // Upcoming event
+                      }
+
                       return Card(
-                        color: event['start_date']
-                                .toDate()
-                                .isBefore(DateTime.now())
-                            ? Colors.grey[500]
-                            : null,
+                        color: cardColor,
                         child: Row(
                           children: [
                             Expanded(
@@ -118,12 +130,38 @@ class _EventsScreenState extends State<EventsScreen> {
                             //button check in
                             IconButton(
                               icon: const Icon(Icons.check),
-                              onPressed: () {
+                              onPressed: () async {
+                                // Check capacity before allowing navigation to check-in screen
+                                final currentCheckins = await FirebaseFirestore
+                                    .instance
+                                    .collection('checkins')
+                                    .where('event_id', isEqualTo: event.id)
+                                    .count()
+                                    .get();
+
+                                final eventCapacity = event['capacity'] as num;
+                                if (currentCheckins.count! >= eventCapacity) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Event has reached maximum capacity'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 Navigator.push(context,
                                     MaterialPageRoute(builder: (context) {
                                   return CheckinScreen(event: event);
                                 }));
                               },
+                              // Grey out button if event ended or capacity reached
+                              color: event['end_date']
+                                      .toDate()
+                                      .isBefore(DateTime.now())
+                                  ? Colors.grey
+                                  : Colors.green,
                             ),
                             IconButton(
                               icon: const Icon(Icons.edit),
