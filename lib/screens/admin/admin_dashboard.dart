@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:hutech_event_flutter/screens/admin/student/students_screen.dart';
+import 'package:hutech_event_flutter/screens/admin/user/users_screen.dart';
 import 'event/events_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -37,7 +38,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         index: currentPageIndex,
         children: const <Widget>[
           EventsScreen(),
-          Text('Students Screen'),
+          UsersScreen(),
           StudentsScreen(),
           Text('Reports Screen'),
           Text('Notifications Screen'),
