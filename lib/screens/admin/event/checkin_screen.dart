@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:barcode_scan2/barcode_scan2.dart';
 
 class CheckinScreen extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> event;
@@ -17,6 +18,25 @@ class _CheckinScreenState extends State<CheckinScreen> {
   bool _isLoading = false;
   String _error = '';
   String _successMessage = '';
+
+  String _scanResult = "No data scanned yet.";
+
+  // Hàm quét QR code
+  Future<void> scanQRCode() async {
+    try {
+      var result = await BarcodeScanner.scan();
+      setState(() {
+        _scanResult = result.rawContent; // Lấy nội dung của QR Code
+      });
+      _studentCodeController.text =
+          _scanResult; // Điền nội dung vào ô nhập liệu
+      checkin(); // Thực hiện check-in
+    } catch (e) {
+      setState(() {
+        _scanResult = "Error: $e";
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -243,7 +263,17 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        // show camera checkin qr code
+                        Text(
+                          'Scan QR code or enter student code to check-in',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(_scanResult, style: TextStyle(color: Colors.blue)),
+                        ElevatedButton(
+                          onPressed: scanQRCode,
+                          child: const Text('Scan QR Code'),
+                        ),
                         const SizedBox(height: 16),
                         TextField(
                           controller: _studentCodeController,
