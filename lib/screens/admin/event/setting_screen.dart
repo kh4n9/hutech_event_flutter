@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({Key? key}) : super(key: key);
@@ -11,7 +10,6 @@ class SettingScreen extends StatefulWidget {
 }
 
 class _SettingScreenState extends State<SettingScreen> {
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   String? linkedAccountEmail;
 
@@ -24,7 +22,6 @@ class _SettingScreenState extends State<SettingScreen> {
     super.initState();
     _checkLinkedAccount();
     _fetchUserInfo();
-
   }
 
   Future<void> _checkLinkedAccount() async {
@@ -74,7 +71,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-
   Future<void> _showChangePasswordDialog() async {
     TextEditingController newPasswordController = TextEditingController();
     TextEditingController confirmPasswordController = TextEditingController();
@@ -118,7 +114,8 @@ class _SettingScreenState extends State<SettingScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (newPasswordController.text != confirmPasswordController.text) {
+                if (newPasswordController.text !=
+                    confirmPasswordController.text) {
                   setState(() {
                     dialogError = 'Passwords do not match';
                   });
@@ -150,7 +147,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -166,17 +162,14 @@ class _SettingScreenState extends State<SettingScreen> {
                 children: [
                   Text('Username: $username'),
                   Text('Email: $email1'),
-
                 ],
               ),
-
             if (linkedAccountEmail != null)
               Text('Linked Google Account: $linkedAccountEmail'),
             ElevatedButton(
               onPressed: _showChangePasswordDialog,
               child: Text('Change Password'),
             ),
-
           ],
         ),
       ),

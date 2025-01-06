@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hutech_event_flutter/screens/admin/student/students_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/user/users_screen.dart';
 import 'event/events_screen.dart';
+import 'event/setting_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -41,8 +42,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           EventsScreen(),
           UsersScreen(),
           StudentsScreen(),
-          Text('Reports Screen'),
           Text('Notifications Screen'),
+          SettingScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -66,9 +67,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             icon: Icon(Icons.school),
             label: 'Students',
           ),
-          NavigationDestination(icon: Icon(Icons.report), label: 'Reports'),
           NavigationDestination(
               icon: Icon(Icons.notifications), label: 'Notifications'),
+          NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
