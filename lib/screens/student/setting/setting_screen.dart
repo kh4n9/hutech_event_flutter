@@ -16,12 +16,14 @@ class _SettingScreenState extends State<SettingScreen> {
   String? username;
   String? email;
   String? email1;
+  bool _isBiometricEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _checkLinkedAccount();
     _fetchUserInfo();
+    _fetchBiometricStatus();
   }
 
   Future<void> _checkLinkedAccount() async {
@@ -62,6 +64,49 @@ class _SettingScreenState extends State<SettingScreen> {
       }
     } else {
       _showSnackBar('No user is currently signed in');
+    }
+  }
+
+  Future<void> _fetchBiometricStatus() async {
+    try {
+      var userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: _auth.currentUser?.email)
+          .get()
+          .then((snapshot) => snapshot.docs.firstOrNull);
+
+      if (userDoc != null) {
+        setState(() {
+          _isBiometricEnabled = userDoc['biometric'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Failed to fetch biometric status: $e');
+    }
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    try {
+      var userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: _auth.currentUser?.email)
+          .get()
+          .then((snapshot) => snapshot.docs.firstOrNull);
+
+      if (userDoc != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userDoc.id)
+            .update({'biometric': value});
+
+        setState(() {
+          _isBiometricEnabled = value;
+        });
+        _showSnackBar('Biometric settings updated');
+      }
+    } catch (e) {
+      print('Failed to update biometric: $e');
+      _showSnackBar('Failed to update biometric settings');
     }
   }
 
@@ -166,6 +211,13 @@ class _SettingScreenState extends State<SettingScreen> {
             ElevatedButton(
               onPressed: _showChangePasswordDialog,
               child: Text('Change Password'),
+            ),
+            ListTile(
+              title: Text('Biometric Authentication'),
+              trailing: Switch(
+                value: _isBiometricEnabled,
+                onChanged: _toggleBiometric,
+              ),
             ),
           ],
         ),

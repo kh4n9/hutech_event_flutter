@@ -28,16 +28,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void setupFirebaseMessaging() async {
     messaging = FirebaseMessaging.instance;
 
-    // Lấy token của thiết bị hiện tại
-    String? token = await messaging.getToken();
-    print('Device Token: $token');
-    //show snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Device Token: $token'),
-      ),
-    );
-
     // Yêu cầu quyền thông báo (chỉ cho iOS)
     await messaging.requestPermission();
 
@@ -103,7 +93,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  Future<void> sendNotificationToAllDevices() async {
+  Future<void> sendNotificationToAllDevices(String body, String title) async {
     const String endpoint =
         'https://fcm.googleapis.com/v1/projects/hutechevent/messages:send';
 
@@ -113,8 +103,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       "message": {
         "topic": "all", // Topic đăng ký
         "notification": {
-          "title": "Thông báo mới!",
-          "body": "Đây là thông báo gửi đến tất cả thiết bị.",
+          "title": title,
+          "body": body,
         },
         "android": {
           "priority": "high",
@@ -165,13 +155,44 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
+  TextEditingController titleController = TextEditingController();
+  TextEditingController bodyController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: ElevatedButton(
-          onPressed: sendNotificationToAllDevices,
-          child: const Text('Send Notification to All Devices'),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: bodyController,
+                decoration: const InputDecoration(
+                  labelText: 'Body',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                sendNotificationToAllDevices(
+                    bodyController.text, titleController.text);
+              },
+              child: const Text('Send Notification to All Devices'),
+            ),
+          ],
         ),
       ),
     );

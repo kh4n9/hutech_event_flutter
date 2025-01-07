@@ -16,12 +16,13 @@ class _LoginScreenState extends State<LoginScreen> {
   String error = '';
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
 
   // reset password
-  Future<void> resetPassword() async {
+  Future<void> resetPassword(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(
-        email: usernameController.text,
+        email: email,
       );
       setState(() {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -206,7 +207,41 @@ class _LoginScreenState extends State<LoginScreen> {
             // if you want to add reset password feature
             TextButton(
               onPressed: () {
-                resetPassword();
+                // turn on dialog to reset password
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('Reset password'),
+                      content: TextField(
+                        controller: emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          border: InputBorder.none,
+                          focusedBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.amber, width: 2),
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            resetPassword(emailController.text);
+                            Navigator.pop(context);
+                          },
+                          child: Text('Reset'),
+                        ),
+                      ],
+                    );
+                  },
+                );
               },
               child: Text('Forgot password?'),
             ),

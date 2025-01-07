@@ -112,6 +112,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
         'role': 'student',
         'created_at': FieldValue.serverTimestamp(),
         'deleted_at': null,
+        'biometric': false,
       });
     } catch (e) {
       print(e);
