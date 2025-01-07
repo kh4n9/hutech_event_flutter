@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'add_event_screen.dart';
 import 'checkin_screen.dart';
 
 class EventsScreen extends StatefulWidget {
@@ -163,68 +162,11 @@ class _EventsScreenState extends State<EventsScreen> {
                                   ? Colors.grey
                                   : Colors.green,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () {
-                                Navigator.push(context,
-                                    MaterialPageRoute(builder: (context) {
-                                  return AddEventScreen(event: event);
-                                })).then((value) {
-                                  if (value == true) {
-                                    getEvents();
-                                  }
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () async {
-                                await showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: const Text('Delete Event'),
-                                      content: Text(
-                                          'Are you sure you want to delete ${event['name']}?'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            softDeleteEvent(event.id,
-                                                event['name'].toString());
-                                            Navigator.pop(context, true);
-                                          },
-                                          child: const Text('Delete'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
                           ],
                         ),
                       );
                     },
                   ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.amber,
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) {
-            return AddEventScreen();
-          })).then((value) {
-            if (value == true) {
-              getEvents();
-            }
-          });
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }

@@ -111,6 +111,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
         'username': studentCode,
         'role': 'student',
         'created_at': FieldValue.serverTimestamp(),
+        'deleted_at': null,
       });
     } catch (e) {
       print(e);
@@ -205,6 +206,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Container(
