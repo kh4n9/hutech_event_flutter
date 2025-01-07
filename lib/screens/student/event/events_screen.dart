@@ -119,7 +119,7 @@ class _EventsScreenState extends State<EventsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(),
+        automaticallyImplyLeading: false,
         title: Container(
           decoration: BoxDecoration(
             color: Colors.white,
