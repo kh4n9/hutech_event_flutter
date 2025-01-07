@@ -18,7 +18,77 @@ class DecistionsTree extends StatefulWidget {
 class _DecistionsTreeState extends State<DecistionsTree> {
   final LocalAuthentication auth = LocalAuthentication();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  bool _isLoading = true; // New state variable
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    initialize();
+  }
+
+  Future<void> initialize() async {
+    try {
+      bool isAuthenticated = await checkUser();
+      if (isAuthenticated) {
+        await determineUserRole();
+      }
+    } catch (e) {
+      print('Initialization error: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<bool> checkUser() async {
+    if (_auth.currentUser == null) return false;
+
+    try {
+      var userDoc = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: _auth.currentUser!.email)
+          .get()
+          .then((snapshot) => snapshot.docs.firstOrNull);
+
+      if (userDoc == null) return false;
+
+      bool biometricEnabled = userDoc['biometric'] ?? false;
+      return !biometricEnabled || await authenticate();
+    } catch (e) {
+      print('Check user error: $e');
+      return false;
+    }
+  }
+
+  Future<void> determineUserRole() async {
+    if (_auth.currentUser == null) return;
+
+    try {
+      var userDoc = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: _auth.currentUser!.email)
+          .get()
+          .then((snapshot) => snapshot.docs.firstOrNull);
+
+      if (userDoc == null) return;
+
+      final Map<String, Widget Function(BuildContext)> roleScreens = {
+        'admin': (context) => AdminDashboard(),
+        'student': (context) => StudentHome(),
+        'colab': (context) => ColabDashboard(),
+      };
+
+      var screen = roleScreens[userDoc['role']];
+      if (screen != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: screen),
+        );
+      }
+    } catch (e) {
+      print('Role determination error: $e');
+    }
+  }
 
   Future<bool> authenticate() async {
     try {
@@ -42,64 +112,6 @@ class _DecistionsTreeState extends State<DecistionsTree> {
       context,
       MaterialPageRoute(builder: (context) => LoginScreen()),
     );
-  }
-
-  Future<bool> checkuser() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      bool authenticated = await authenticate();
-      if (!authenticated) {
-        logout();
-        return false; // Prevent further processing
-      }
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    initialize();
-  }
-
-  Future<void> initialize() async {
-    bool isAuthenticated = await checkuser();
-    if (isAuthenticated) {
-      await determineUserRole();
-    }
-    setState(() {
-      _isLoading = false;
-    });
-  }
-
-  Future<void> determineUserRole() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: user.email)
-          .get();
-      if (snapshot.docs.isNotEmpty) {
-        String role = snapshot.docs.first['role'];
-        if (role == 'admin') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => AdminDashboard()),
-          );
-        } else if (role == 'student') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => StudentHome()),
-          );
-        } else if (role == 'colab') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => ColabDashboard()),
-          );
-        }
-      }
-    }
   }
 
   @override

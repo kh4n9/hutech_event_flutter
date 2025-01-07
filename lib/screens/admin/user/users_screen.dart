@@ -141,6 +141,7 @@ class _UsersScreenState extends State<UsersScreen> {
         'role': role,
         'created_at': FieldValue.serverTimestamp(),
         'deleted_at': null,
+        'biometric': false,
       });
 
       refresh();

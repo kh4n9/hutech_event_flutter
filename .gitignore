@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# assets
+/assets/hutechevent-firebase-adminsdk-q5itl-0205e65f9d.json
+lib/screens/admin/notification/hutechevent-firebase-adminsdk-q5itl-0205e65f9d.json
