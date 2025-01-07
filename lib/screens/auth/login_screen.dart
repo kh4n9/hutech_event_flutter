@@ -17,6 +17,24 @@ class _LoginScreenState extends State<LoginScreen> {
   TextEditingController usernameController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
+  // reset password
+  Future<void> resetPassword() async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: usernameController.text,
+      );
+      setState(() {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Password reset email sent')),
+        );
+      });
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+      });
+    }
+  }
+
   login() async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -64,7 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return; // The user canceled the sign-in
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -146,38 +165,50 @@ class _LoginScreenState extends State<LoginScreen> {
             if (error.isNotEmpty)
               Text(error, style: TextStyle(color: Colors.red)),
             SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amber[500],
-                shadowColor: Colors.amber[700],
-                elevation: 10,
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber[500],
+                    shadowColor: Colors.amber[700],
+                    elevation: 10,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    login();
+                  },
+                  child: Text('Login',
+                      style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
-              ),
-              onPressed: () {
-                login();
-              },
-              child: Text('Login',
-                  style: TextStyle(fontSize: 20, color: Colors.white)),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[500],
+                    shadowColor: Colors.blue[700],
+                    elevation: 10,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    signInWithGoogle();
+                  },
+                  child: Text('Login Google',
+                      style: TextStyle(fontSize: 20, color: Colors.white)),
+                ),
+              ],
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[500],
-                shadowColor: Colors.blue[700],
-                elevation: 10,
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+            // if you want to add reset password feature
+            TextButton(
               onPressed: () {
-                signInWithGoogle();
+                resetPassword();
               },
-              child: Text('Login with Google',
-                  style: TextStyle(fontSize: 20, color: Colors.white)),
+              child: Text('Forgot password?'),
             ),
           ],
         ),

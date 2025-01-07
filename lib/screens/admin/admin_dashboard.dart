@@ -2,9 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/screens/admin/student/students_screen.dart';
+import 'package:hutech_event_flutter/screens/admin/user/users_screen.dart';
 
-import 'package:local_auth/local_auth.dart';
-import '../../decistions_tree.dart';
 import 'event/events_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/event/setting_screen.dart';
 
@@ -16,10 +15,7 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final LocalAuthentication auth = LocalAuthentication();
   int currentPageIndex = 0;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   String error = '';
 
   logout() async {
@@ -33,33 +29,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    checkuser();
-  }
-
-  Future<void> checkuser() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      bool authenticated = await authenticate();
-      if (!authenticated) {
-        logout();
-        Navigator.pushNamed(context, '/');
-      }
-    }
-  }
-
-  Future<bool> authenticate() async {
-    try {
-      bool authenticated = await auth.authenticate(
-        localizedReason: 'Please authenticate to access the admin dashboard',
-        options: const AuthenticationOptions(
-          useErrorDialogs: true,
-          stickyAuth: true,
-        ),
-      );
-      return authenticated;
-    } catch (e) {
-      return false;
-    }
   }
 
   @override
