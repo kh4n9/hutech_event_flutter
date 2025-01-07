@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+// import http
+import 'package:http/http.dart' as http;
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -17,6 +21,35 @@ class _EventsScreenState extends State<EventsScreen> {
   void initState() {
     super.initState();
     getEvents();
+  }
+
+  Future<Map<String, dynamic>?> fetchWeather({
+    required String date, // Ngày (yyyy-MM-dd)
+    required int hour, // Giờ (0-23)
+  }) async {
+    final String apiKey = '2dfd188927b5403c9ee101238242912';
+    final String baseUrl = 'https://api.weatherapi.com/v1/forecast.json';
+    final String location = '10.836716548527725,106.74422528655306'; // Tọa độ
+
+    final String apiUrl =
+        '$baseUrl?q=$location&days=1&dt=$date&hour=$hour&lang=vi&key=$apiKey';
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        // Parse JSON data
+        final data = json.decode(utf8.decode(response.bodyBytes))
+            as Map<String, dynamic>;
+        return data; // Trả về dữ liệu JSON
+      } else {
+        print('Error: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Exception: $e');
+      return null;
+    }
   }
 
   Future<void> getEvents() async {
@@ -102,6 +135,49 @@ class _EventsScreenState extends State<EventsScreen> {
               Text('Start: ${eventData['start_date'].toDate()}'),
               Text('End: ${eventData['end_date'].toDate()}'),
               Text('Capacity: ${eventData['capacity']}'),
+              // Weather forecast
+              FutureBuilder<Map<String, dynamic>?>(
+                future: fetchWeather(
+                  date: eventData['start_date']
+                      .toDate()
+                      .toString()
+                      .substring(0, 10),
+                  hour: eventData['start_date']
+                      .toDate()
+                      .hour, // Lấy giờ bắt đầu của sự kiện
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  }
+
+                  if (snapshot.hasError) {
+                    return Text(
+                        'Failed to fetch weather data: ${snapshot.error}');
+                  }
+
+                  if (snapshot.hasData) {
+                    final weatherData = snapshot.data!;
+                    final forecast = weatherData['forecast']['forecastday'][0];
+                    final condition = forecast['hour'][0]['condition']['text'];
+                    final tempC = forecast['hour'][0]['temp_c'];
+                    final icon = forecast['hour'][0]['condition']['icon'];
+
+                    return Column(
+                      children: [
+                        Image.network(
+                          'https:$icon',
+                          width: 50,
+                          height: 50,
+                        ),
+                        Text('Weather forecast: $condition, $tempC°C'),
+                      ],
+                    );
+                  }
+
+                  return const Text('No weather data available');
+                },
+              ),
             ],
           ),
           actions: [
