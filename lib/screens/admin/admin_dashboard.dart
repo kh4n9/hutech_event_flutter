@@ -8,7 +8,6 @@ import '../../decistions_tree.dart';
 import 'event/events_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/event/setting_screen.dart';
 
-
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
 
@@ -113,10 +112,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           NavigationDestination(
               icon: Icon(Icons.notifications), label: 'Notifications'),
-
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-
-
         ],
       ),
     );
