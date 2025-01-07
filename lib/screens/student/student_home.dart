@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:hutech_event_flutter/screens/student/event/events_screen.dart';
+import 'package:hutech_event_flutter/screens/student/history/history_screen.dart';
+import 'package:hutech_event_flutter/screens/student/setting/setting_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({Key? key}) : super(key: key);
@@ -9,8 +13,10 @@ class StudentHome extends StatefulWidget {
 }
 
 class _StudentHomeState extends State<StudentHome> {
+  int currentPageIndex = 0;
   logout() async {
     await FirebaseAuth.instance.signOut();
+    await GoogleSignIn().signOut();
   }
 
   @override
@@ -29,23 +35,34 @@ class _StudentHomeState extends State<StudentHome> {
           ),
         ],
       ),
-      body: Center(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            children: [
-              Container(
-                alignment: Alignment.topLeft,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/student/event');
-                  },
-                  child: const Text('Event'),
-                ),
-              ),
-            ],
+      body: IndexedStack(
+        index: currentPageIndex,
+        children: const <Widget>[
+          EventsScreen(),
+          HistoryScreen(),
+          SettingScreen(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        onDestinationSelected: (int index) {
+          setState(() {
+            currentPageIndex = index;
+          });
+        },
+        indicatorColor: Colors.amber,
+        selectedIndex: currentPageIndex,
+        destinations: const <Widget>[
+          NavigationDestination(
+            icon: Icon(Icons.event),
+            label: 'Events',
           ),
-        ),
+          // lịch sử tham gia sự kiện
+          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
+          NavigationDestination(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }

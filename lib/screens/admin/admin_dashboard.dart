@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/screens/admin/student/students_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/user/users_screen.dart';
 import 'event/events_screen.dart';
@@ -17,6 +18,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   logout() async {
     await FirebaseAuth.instance.signOut();
+    await GoogleSignIn().signOut();
   }
 
   @override

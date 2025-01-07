@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/screens/colab/event/events_screen.dart';
 import 'package:hutech_event_flutter/screens/colab/event/setting_screen.dart';
 
@@ -14,6 +15,7 @@ class _ColabDashboardState extends State<ColabDashboard> {
   int currentPageIndex = 0;
   logout() async {
     FirebaseAuth.instance.signOut();
+    await GoogleSignIn().signOut();
   }
 
   @override
