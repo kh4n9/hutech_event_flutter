@@ -13,6 +13,7 @@ class EventsScreen extends StatefulWidget {
 class _EventsScreenState extends State<EventsScreen> {
   QuerySnapshot<Map<String, dynamic>>? events;
   List<QueryDocumentSnapshot<Map<String, dynamic>>> filteredEvents = [];
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -215,6 +216,7 @@ class _EventsScreenState extends State<EventsScreen> {
       ),
       // phân loại các sự kiện theo trạng thái chưa diễn ra, đang diễn ra, đã diễn ra
       bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.schedule),
@@ -232,6 +234,7 @@ class _EventsScreenState extends State<EventsScreen> {
         onTap: (index) {
           final now = DateTime.now();
           setState(() {
+            _selectedIndex = index;
             filteredEvents = events?.docs
                     .where((doc) =>
                         !doc.data().containsKey('deleted_at') &&
