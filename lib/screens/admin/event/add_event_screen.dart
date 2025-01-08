@@ -266,15 +266,6 @@ class _AddEventScreenState extends State<AddEventScreen> {
         title: widget.event != null
             ? const Text('Edit Event')
             : const Text('Add Event'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              // test thong bao
-              sendNotificationToAllDevices('Test body', 'Test title');
-            },
-            icon: const Icon(Icons.close),
-          ),
-        ],
       ),
       body: Center(
         child: Padding(
