@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/screens/auth/login_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/admin_dashboard.dart';
 import 'package:hutech_event_flutter/screens/student/student_home.dart';
@@ -44,18 +43,36 @@ class _DecistionsTreeState extends State<DecistionsTree> {
     if (_auth.currentUser == null) return false;
 
     try {
-      var userDoc = await _firestore
+      // Lấy document của người dùng từ Firestore
+      var snapshot = await _firestore
           .collection('users')
           .where('email', isEqualTo: _auth.currentUser!.email)
-          .get()
-          .then((snapshot) => snapshot.docs.firstOrNull);
+          .get();
+
+      var userDoc = snapshot.docs.isEmpty ? null : snapshot.docs.first;
 
       if (userDoc == null) return false;
 
       bool biometricEnabled = userDoc['biometric'] ?? false;
-      return !biometricEnabled || await authenticate();
+      if (biometricEnabled) {
+        // Kiểm tra nếu thiết bị hỗ trợ biometrics
+        bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+        print('Thiết bị hỗ trợ biometrics: $canAuthenticateWithBiometrics');
+        // lấy ra danh sách các loại biometrics mà thiết bị hỗ trợ
+        List<BiometricType> availableBiometrics =
+            await auth.getAvailableBiometrics();
+
+        if (canAuthenticateWithBiometrics && availableBiometrics.isNotEmpty) {
+          bool authenticated = await authenticate();
+          if (!authenticated) return false;
+        } else {
+          print('Thiết bị không hỗ trợ biometrics.');
+          return true;
+        }
+      }
+      return true;
     } catch (e) {
-      print('Check user error: $e');
+      print('Lỗi kiểm tra người dùng: $e');
       return false;
     }
   }
@@ -103,15 +120,6 @@ class _DecistionsTreeState extends State<DecistionsTree> {
     } catch (e) {
       return false;
     }
-  }
-
-  logout() async {
-    await FirebaseAuth.instance.signOut();
-    await GoogleSignIn().signOut();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => LoginScreen()),
-    );
   }
 
   @override

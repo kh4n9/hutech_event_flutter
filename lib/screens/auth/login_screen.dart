@@ -185,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text('Login',
                       style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
-                SizedBox(height: 20),
+                SizedBox(width: 20),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[500],
@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     signInWithGoogle();
                   },
-                  child: Text('Login Google',
+                  child: Text('Google',
                       style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
               ],
