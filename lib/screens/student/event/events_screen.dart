@@ -16,6 +16,7 @@ class _EventsScreenState extends State<EventsScreen> {
   QuerySnapshot<Map<String, dynamic>>? events;
   List<QueryDocumentSnapshot<Map<String, dynamic>>> filteredEvents = [];
   Map<String, int> checkInCounts = {};
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -223,47 +224,88 @@ class _EventsScreenState extends State<EventsScreen> {
             ? const CircularProgressIndicator()
             : filteredEvents.isEmpty
                 ? const Text('No events found.')
-                : ListView.builder(
-                    itemCount: filteredEvents.length,
-                    itemBuilder: (context, index) {
-                      final event = filteredEvents[index];
-                      final now = DateTime.now();
-                      final startDate = event['start_date'].toDate();
-                      final endDate = event['end_date'].toDate();
+                : RefreshIndicator(
+                    onRefresh: getEvents,
+                    child: ListView.builder(
+                      itemCount: filteredEvents.length,
+                      itemBuilder: (context, index) {
+                        final event = filteredEvents[index];
+                        final now = DateTime.now();
+                        final startDate = event['start_date'].toDate();
+                        final endDate = event['end_date'].toDate();
 
-                      // Determine card color based on event status
-                      Color? cardColor;
-                      if (startDate.isBefore(now) && endDate.isAfter(now)) {
-                        cardColor = Colors.green[100]; // Ongoing event
-                      } else {
-                        cardColor = Colors.amber[100]; // Upcoming event
-                      }
+                        // Determine card color based on event status
+                        Color? cardColor;
+                        if (endDate.isBefore(now)) {
+                          cardColor = Colors.grey[200]; // Completed event
+                        } else if (startDate.isBefore(now) &&
+                            endDate.isAfter(now)) {
+                          cardColor = Colors.green[100]; // Ongoing event
+                        } else if (startDate.isAfter(now)) {
+                          cardColor = Colors.amber[100]; // Upcoming event
+                        }
 
-                      return Card(
-                        color: cardColor,
-                        margin:
-                            EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          onTap: () => showEventDetailsDialog(event.data()),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: ListTile(
-                                  title: Text(event['name']),
-                                  subtitle: Text(
-                                      '${event['start_date'].toDate().toString().substring(0, 16)} - ${event['end_date'].toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${checkInCounts[event.id] ?? 0}/${event['capacity']} people'),
-                                ),
-                              ),
-                            ],
+                        return Card(
+                          color: cardColor,
+                          margin:
+                              EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                      );
-                    },
+                          child: InkWell(
+                            onTap: () => showEventDetailsDialog(event.data()),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ListTile(
+                                    title: Text(event['name']),
+                                    subtitle: Text(
+                                        '${event['start_date'].toDate().toString().substring(0, 16)} - ${event['end_date'].toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${checkInCounts[event.id] ?? 0}/${event['capacity']} people'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
+      ),
+      // phân loại các sự kiện theo trạng thái chưa diễn ra, đang diễn ra, đã diễn ra
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.schedule),
+            label: 'Upcoming',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.play_arrow),
+            label: 'Ongoing',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.done),
+            label: 'Completed',
+          ),
+        ],
+        onTap: (index) {
+          final now = DateTime.now();
+          setState(() {
+            _selectedIndex = index;
+            filteredEvents = events?.docs
+                    .where((doc) =>
+                        !doc.data().containsKey('deleted_at') &&
+                        (index == 0
+                            ? doc['start_date'].toDate().isAfter(now)
+                            : index == 1
+                                ? doc['start_date'].toDate().isBefore(now) &&
+                                    doc['end_date'].toDate().isAfter(now)
+                                : doc['end_date'].toDate().isBefore(now)))
+                    .toList() ??
+                [];
+          });
+        },
       ),
     );
   }

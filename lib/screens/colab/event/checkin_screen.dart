@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:barcode_scan2/barcode_scan2.dart';
+import 'package:intl/intl.dart';
 
 class CheckinScreen extends StatefulWidget {
   final DocumentSnapshot<Map<String, dynamic>> event;
@@ -21,20 +22,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
   String _scanResult = "No data scanned yet.";
 
-  // Hàm quét QR code
+  // Improved QR scanning with better error handling
   Future<void> scanQRCode() async {
     try {
-      var result = await BarcodeScanner.scan();
-      setState(() {
-        _scanResult = result.rawContent; // Lấy nội dung của QR Code
-      });
-      _studentCodeController.text =
-          _scanResult; // Điền nội dung vào ô nhập liệu
-      checkin(); // Thực hiện check-in
+      final result = await BarcodeScanner.scan();
+      if (!mounted) return;
+
+      setState(() => _scanResult = result.rawContent);
+      if (result.rawContent.isNotEmpty) {
+        _studentCodeController.text = result.rawContent;
+        await checkin();
+      }
+    } on PlatformException catch (e) {
+      setState(() => _scanResult = "Error: ${e.message}");
     } catch (e) {
-      setState(() {
-        _scanResult = "Error: $e";
-      });
+      setState(() => _scanResult = "Error: Unknown error occurred");
     }
   }
 
@@ -54,11 +56,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
     super.dispose();
   }
 
+  // Optimized check-in logic
   Future<void> checkin() async {
-    if (_studentCodeController.text.isEmpty) {
-      _showError('Please enter student code');
-      return;
-    }
+    if (!_validateInput()) return;
 
     setState(() {
       _isLoading = true;
@@ -67,84 +67,113 @@ class _CheckinScreenState extends State<CheckinScreen> {
     });
 
     try {
-      // Check capacity first
-      final currentCheckins = await FirebaseFirestore.instance
-          .collection('checkins')
-          .where('event_id', isEqualTo: widget.event.id)
-          .count()
-          .get();
+      if (!await _checkEventCapacity()) return;
+      final student = await _getStudent();
+      if (student == null) return;
+      if (!await _validateEventStatus()) return;
+      if (await _isAlreadyCheckedIn(student.id)) return;
 
-      final eventCapacity = widget.event['capacity'] as num;
-      if (currentCheckins.count! >= eventCapacity) {
-        _showError('Event has reached maximum capacity');
-        return;
-      }
-
-      // Get student data
-      final studentQuery = await FirebaseFirestore.instance
-          .collection('students')
-          .where('studentCode', isEqualTo: _studentCodeController.text)
-          .where('deleted_at', isNull: true)
-          .limit(1)
-          .get();
-
-      if (studentQuery.docs.isEmpty) {
-        _showError('Student not found');
-        return;
-      }
-
-      final student = studentQuery.docs.first;
-
-      // Check if event is still active
-      final eventData = widget.event.data();
-      if (eventData == null) {
-        _showError('Event not found');
-        return;
-      }
-
-      final now = Timestamp.now();
-      final endTime = eventData['end_time'] as Timestamp?;
-      if (endTime != null && endTime.compareTo(now) < 0) {
-        _showError('Event has ended');
-        return;
-      }
-
-      // Check for existing check-in
-      final existingCheckin = await FirebaseFirestore.instance
-          .collection('checkins')
-          .where('event_id', isEqualTo: widget.event.id)
-          .where('student_id', isEqualTo: student.id)
-          .limit(1)
-          .get();
-
-      if (existingCheckin.docs.isNotEmpty) {
-        _showError('Student already checked in');
-        return;
-      }
-
-      // Create new check-in
-      await FirebaseFirestore.instance.collection('checkins').add({
-        'event_id': widget.event.id,
-        'student_id': student.id,
-        'student_code': student['studentCode'],
-        'student_name': student['name'],
-        'checkin_by': FirebaseAuth.instance.currentUser!.uid,
-        'checkin_at': now,
-      });
-
-      // Show success and clear input
-      setState(() {
-        _successMessage = 'Check-in successful: ${student['name']}';
-        _studentCodeController.clear();
-      });
-
-      // Refocus input for next check-in
-      _focusNode.requestFocus();
+      await _createCheckin(student);
+      _handleSuccess(student['name']);
     } catch (e) {
       _showError('Error during check-in: ${e.toString()}');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _validateInput() {
+    if (_studentCodeController.text.isEmpty) {
+      _showError('Please enter student code');
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _checkEventCapacity() async {
+    final currentCheckins = await FirebaseFirestore.instance
+        .collection('checkins')
+        .where('event_id', isEqualTo: widget.event.id)
+        .count()
+        .get();
+
+    if (currentCheckins.count! >= widget.event['capacity']) {
+      _showError('Event has reached maximum capacity');
+      return false;
+    }
+    return true;
+  }
+
+  Future<DocumentSnapshot?> _getStudent() async {
+    final studentQuery = await FirebaseFirestore.instance
+        .collection('students')
+        .where('studentCode', isEqualTo: _studentCodeController.text)
+        .where('deleted_at', isNull: true)
+        .limit(1)
+        .get();
+
+    if (studentQuery.docs.isEmpty) {
+      _showError('Student not found');
+      return null;
+    }
+    return studentQuery.docs.first;
+  }
+
+  Future<bool> _validateEventStatus() async {
+    final eventData = widget.event.data();
+    if (eventData == null) {
+      _showError('Event not found');
+      return false;
+    }
+
+    final now = Timestamp.now();
+    final endTime = eventData['end_time'] as Timestamp?;
+    if (endTime != null && endTime.compareTo(now) < 0) {
+      _showError('Event has ended');
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _isAlreadyCheckedIn(String studentId) async {
+    final existingCheckin = await FirebaseFirestore.instance
+        .collection('checkins')
+        .where('event_id', isEqualTo: widget.event.id)
+        .where('student_id', isEqualTo: studentId)
+        .limit(1)
+        .get();
+
+    if (existingCheckin.docs.isNotEmpty) {
+      _showError('Student already checked in');
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _createCheckin(DocumentSnapshot student) async {
+    await FirebaseFirestore.instance.collection('checkins').add({
+      'event_id': widget.event.id,
+      'student_id': student.id,
+      'student_code': student['studentCode'],
+      'student_name': student['name'],
+      'checkin_by': FirebaseAuth.instance.currentUser!.uid,
+      'checkin_at': Timestamp.now(),
+    });
+  }
+
+  reloadCheckins() {
+    setState(() async {
+      await FirebaseFirestore.instance.collection('checkins').get();
+    });
+  }
+
+  void _handleSuccess(String studentName) {
+    setState(() {
+      _successMessage = 'Check-in successful: $studentName';
+      _studentCodeController.clear();
+      _scanResult = "No data scanned yet.";
+    });
+    _focusNode.requestFocus();
   }
 
   void _showError(String message) {
@@ -220,32 +249,37 @@ class _CheckinScreenState extends State<CheckinScreen> {
           );
         }
 
-        return ListView.builder(
-          itemCount: checkins.length,
-          itemBuilder: (context, index) {
-            final checkin = checkins[index].data() as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4.0,
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  child: Text(
-                    '${checkins.length - index}',
-                    style: const TextStyle(color: Colors.white),
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {});
+          },
+          child: ListView.builder(
+            itemCount: checkins.length,
+            itemBuilder: (context, index) {
+              final checkin = checkins[index].data() as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 4.0,
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: Text(
+                      '${checkins.length - index}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  title: Text(checkin['student_name'] ?? 'Unknown'),
+                  subtitle: Text(checkin['student_code'] ?? 'No code'),
+                  trailing: Text(
+                    _formatDateTime(checkin['checkin_at'] as Timestamp),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
-                title: Text(checkin['student_name'] ?? 'Unknown'),
-                subtitle: Text(checkin['student_code'] ?? 'No code'),
-                trailing: Text(
-                  _formatDateTime(checkin['checkin_at'] as Timestamp),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
@@ -270,24 +304,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Text(
-                          widget.event['name'],
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Scan QR code or enter student code to check-in',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(_scanResult, style: TextStyle(color: Colors.blue)),
-                        ElevatedButton(
-                          onPressed: scanQRCode,
-                          child: const Text('Scan QR Code'),
-                        ),
-                        const SizedBox(height: 16),
                         TextField(
                           controller: _studentCodeController,
                           focusNode: _focusNode,
@@ -326,14 +342,20 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : checkin,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('Check-in'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: scanQRCode,
+                      icon: const Icon(Icons.qr_code),
+                      label: const Text('Scan QR'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: checkin,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Check-in'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -369,8 +391,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
     );
   }
 
+  // Improved date formatting
   String _formatDateTime(Timestamp timestamp) {
     final date = timestamp.toDate();
-    return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return DateFormat('HH:mm').format(date);
   }
 }

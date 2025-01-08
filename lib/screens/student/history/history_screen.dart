@@ -67,43 +67,43 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Check-in History'),
-        centerTitle: true,
-      ),
       body: _checkins.isEmpty
-          ? TextButton(
-              onPressed: getCheckins,
-              child: Text('Get Checkins'),
+          ? Center(
+              child: Text('No checkin history'),
             )
-          : ListView.builder(
-              itemCount: _checkins.length,
-              itemBuilder: (context, index) {
-                final DateTime checkinTime =
-                    _checkins[index]['checkin_at'].toDate();
-                final String formattedTime =
-                    DateFormat('dd/MM/yyyy HH:mm').format(checkinTime);
-                return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  elevation: 3,
-                  child: ListTile(
-                    leading: Icon(Icons.event),
-                    title: Text(formattedTime),
-                    subtitle: FutureBuilder(
-                      future: getEventById(_checkins[index]['event_id']),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Text('Loading...');
-                        }
-                        final DocumentSnapshot event =
-                            snapshot.data as DocumentSnapshot;
-                        return Text(event['name']);
-                      },
-                    ),
-                  ),
-                );
+          : RefreshIndicator(
+              onRefresh: () async {
+                await getCheckins();
               },
+              child: ListView.builder(
+                itemCount: _checkins.length,
+                itemBuilder: (context, index) {
+                  final DateTime checkinTime =
+                      _checkins[index]['checkin_at'].toDate();
+                  final String formattedTime =
+                      DateFormat('dd/MM/yyyy HH:mm').format(checkinTime);
+                  return Card(
+                    margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    elevation: 3,
+                    child: ListTile(
+                      leading: Icon(Icons.event),
+                      title: Text(formattedTime),
+                      subtitle: FutureBuilder(
+                        future: getEventById(_checkins[index]['event_id']),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Text('Loading...');
+                          }
+                          final DocumentSnapshot event =
+                              snapshot.data as DocumentSnapshot;
+                          return Text(event['name']);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
     );
   }
