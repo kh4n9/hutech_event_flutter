@@ -21,8 +21,10 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Future<void> getEvents() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('events').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('deleted_at', isNull: true)
+        .get();
     setState(() {
       events = snapshot;
       searchEvents(''); // Apply the current filter after loading events
@@ -32,37 +34,20 @@ class _EventsScreenState extends State<EventsScreen> {
   void searchEvents(String value) {
     if (value.isEmpty) {
       setState(() {
-        filteredEvents = events?.docs
-                .where((doc) => !doc.data().containsKey('deleted_at'))
-                .toList() ??
-            [];
+        filteredEvents = events?.docs.toList() ?? [];
       });
       return;
     }
 
     setState(() {
       filteredEvents = events?.docs
-              .where((doc) =>
-                  doc['name']
-                      .toString()
-                      .toLowerCase()
-                      .contains(value.toLowerCase()) &&
-                  !doc.data().containsKey('deleted_at'))
+              .where((doc) => doc['name']
+                  .toString()
+                  .toLowerCase()
+                  .contains(value.toLowerCase()))
               .toList() ??
           [];
     });
-  }
-
-  softDeleteEvent(String id, String name) async {
-    await FirebaseFirestore.instance.collection('events').doc(id).update({
-      'deleted_at': Timestamp.now(),
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Event $name has been deleted.'),
-      ),
-    );
-    getEvents(); // Reload events after deletion
   }
 
   @override
@@ -197,14 +182,12 @@ class _EventsScreenState extends State<EventsScreen> {
           setState(() {
             _selectedIndex = index;
             filteredEvents = events?.docs
-                    .where((doc) =>
-                        !doc.data().containsKey('deleted_at') &&
-                        (index == 0
-                            ? doc['start_date'].toDate().isAfter(now)
-                            : index == 1
-                                ? doc['start_date'].toDate().isBefore(now) &&
-                                    doc['end_date'].toDate().isAfter(now)
-                                : doc['end_date'].toDate().isBefore(now)))
+                    .where((doc) => (index == 0
+                        ? doc['start_date'].toDate().isAfter(now)
+                        : index == 1
+                            ? doc['start_date'].toDate().isBefore(now) &&
+                                doc['end_date'].toDate().isAfter(now)
+                            : doc['end_date'].toDate().isBefore(now)))
                     .toList() ??
                 [];
           });

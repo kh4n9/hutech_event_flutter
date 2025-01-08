@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hutech_event_flutter/screens/admin/notification/notifucation_screen.dart';
+import 'package:hutech_event_flutter/screens/admin/report_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/student/students_screen.dart';
 import 'package:hutech_event_flutter/screens/admin/user/users_screen.dart';
 
@@ -55,6 +56,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           EventsScreen(),
           UsersScreen(),
           StudentsScreen(),
+          ReportScreen(),
           NotificationScreen(),
           SettingScreen(),
         ],
@@ -81,7 +83,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
             label: 'Students',
           ),
           NavigationDestination(
-              icon: Icon(Icons.notifications), label: 'Notifications'),
+            icon: Icon(Icons.bar_chart),
+            label: 'Report',
+          ),
+          NavigationDestination(
+              icon: Icon(Icons.notifications), label: 'Notifi'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),

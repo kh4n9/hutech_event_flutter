@@ -48,6 +48,7 @@ dependencies:
   googleapis_auth: ^1.6.0
   jose: ^0.3.4
   dart_jsonwebtoken: ^2.14.2
+  fl_chart: ^0.70.1
 
 dev_dependencies:
   flutter_test:

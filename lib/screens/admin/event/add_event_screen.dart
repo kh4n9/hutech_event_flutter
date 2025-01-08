@@ -224,6 +224,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
         'end_date': end_date,
         'capacity': capacity,
         'created_at': FieldValue.serverTimestamp(),
+        'deleted_at': null,
       });
 
       // Send notification about the new event

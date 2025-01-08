@@ -21,7 +21,11 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   Future<void> getEvents() async {
-    final snapshot = await FirebaseFirestore.instance.collection('events').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('deleted_at', isNull: true)
+        .get();
+
     final now = DateTime.now();
 
     int completed = 0;
@@ -49,49 +53,50 @@ class _ReportScreenState extends State<ReportScreen> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Event Report'),
-    ),
-    body: Center(
-      child: completedEvents + ongoingEvents + upcomingEvents == 0
-          ? const CircularProgressIndicator()
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Completed Events: $completedEvents'),
-                Text('Ongoing Events: $ongoingEvents'),
-                Text('Upcoming Events: $upcomingEvents'),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: 200, // Set the desired width
-                  height: 200, // Set the desired height
-                  child: PieChart(
-                    PieChartData(
-                      sections: [
-                        PieChartSectionData(
-                          value: completedEvents.toDouble(),
-                          title: 'Completed',
-                          color: Colors.grey,
-                        ),
-                        PieChartSectionData(
-                          value: ongoingEvents.toDouble(),
-                          title: 'Ongoing',
-                          color: Colors.green,
-                        ),
-                        PieChartSectionData(
-                          value: upcomingEvents.toDouble(),
-                          title: 'Upcoming',
-                          color: Colors.amber,
-                        ),
-                      ],
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: completedEvents + ongoingEvents + upcomingEvents == 0
+            ? const CircularProgressIndicator()
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton.icon(
+                      onPressed: () => getEvents(),
+                      label: Text('Refresh'),
+                      icon: Icon(Icons.refresh)),
+                  Text('Completed Events: $completedEvents'),
+                  Text('Ongoing Events: $ongoingEvents'),
+                  Text('Upcoming Events: $upcomingEvents'),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: 200, // Set the desired width
+                    height: 200, // Set the desired height
+                    child: PieChart(
+                      PieChartData(
+                        sections: [
+                          PieChartSectionData(
+                            value: completedEvents.toDouble(),
+                            title: 'Completed',
+                            color: Colors.grey,
+                          ),
+                          PieChartSectionData(
+                            value: ongoingEvents.toDouble(),
+                            title: 'Ongoing',
+                            color: Colors.green,
+                          ),
+                          PieChartSectionData(
+                            value: upcomingEvents.toDouble(),
+                            title: 'Upcoming',
+                            color: Colors.amber,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-    ),
-  );
-}
+                ],
+              ),
+      ),
+    );
+  }
 }
