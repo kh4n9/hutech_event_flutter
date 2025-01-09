@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hutech_event_flutter/screens/test/discord_image_upload.dart';
 
 class SettingScreen extends StatefulWidget {
   const SettingScreen({Key? key}) : super(key: key);
@@ -218,6 +219,16 @@ class _SettingScreenState extends State<SettingScreen> {
                 value: _isBiometricEnabled,
                 onChanged: _toggleBiometric,
               ),
+            ),
+            //discord image upload
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => DiscordImageUpload()));
+              },
+              child: Text('Discord Image Upload Test'),
             ),
           ],
         ),

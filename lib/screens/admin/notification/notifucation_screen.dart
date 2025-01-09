@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/services.dart'; // Import for rootBundle
 import 'package:jose/jose.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NotificationScreen extends StatefulWidget {
   // Renamed class
@@ -36,13 +36,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   Future<String> getAccessToken() async {
-    final String serviceAccount = await rootBundle.loadString(
-        'assets/hutechevent-firebase-adminsdk-q5itl-0205e65f9d.json');
-    final Map<String, dynamic> credentials = json.decode(serviceAccount);
-
-    final String clientEmail = credentials['client_email'];
-    final String privateKeyString = credentials['private_key'];
-    final String tokenUri = credentials['token_uri'];
+    final String clientEmail = dotenv.env['CLIENT_EMAIL']!;
+    final String privateKeyString = dotenv.env['PRIVATE_KEY']!.replaceAll(
+      r'\n',
+      '\n',
+    );
+    final String tokenUri = dotenv.env['TOKEN_URI']!;
 
     // Create claims for FCM scope
     final claims = JsonWebTokenClaims.fromJson({

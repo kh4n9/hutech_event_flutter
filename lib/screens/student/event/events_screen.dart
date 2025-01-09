@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import http
 import 'package:http/http.dart' as http;
 
 class EventsScreen extends StatefulWidget {
@@ -54,8 +53,10 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Future<void> getEvents() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('events').get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('events')
+        .where('deleted_at', isNull: true)
+        .get();
     setState(() {
       events = snapshot;
       searchEvents(''); // Apply the current filter after loading events
@@ -78,117 +79,195 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   void searchEvents(String value) {
-    final now = DateTime.now();
-    if (value.isEmpty) {
-      setState(() {
-        filteredEvents = events?.docs
-                .where((doc) =>
-                    !doc.data().containsKey('deleted_at') &&
-                    doc['end_date']
-                        .toDate()
-                        .isAfter(now)) // Only show future and ongoing events
-                .toList() ??
-            [];
-      });
-      return;
-    }
+    if (events == null) return;
 
+    final now = DateTime.now();
     setState(() {
-      filteredEvents = events?.docs
-              .where((doc) =>
-                  doc['name']
-                      .toString()
-                      .toLowerCase()
-                      .contains(value.toLowerCase()) &&
-                  !doc.data().containsKey('deleted_at') &&
-                  doc['end_date']
-                      .toDate()
-                      .isAfter(now)) // Only show future and ongoing events
-              .toList() ??
-          [];
+      filteredEvents = events!.docs.where((doc) {
+        final endDate = (doc.data()['end_date'] as Timestamp?)?.toDate();
+        if (endDate == null) return false;
+
+        if (value.isEmpty) {
+          return endDate.isAfter(now);
+        }
+
+        final name = doc.data()['name']?.toString().toLowerCase() ?? '';
+        return name.contains(value.toLowerCase()) && endDate.isAfter(now);
+      }).toList();
     });
   }
 
-  softDeleteEvent(String id, String name) async {
-    await FirebaseFirestore.instance.collection('events').doc(id).update({
-      'deleted_at': Timestamp.now(),
+  void filterEventsByStatus(int index) {
+    if (events == null) return;
+
+    final now = DateTime.now();
+    setState(() {
+      _selectedIndex = index;
+      filteredEvents = events!.docs.where((doc) {
+        final startDate = (doc.data()['start_date'] as Timestamp?)?.toDate();
+        final endDate = (doc.data()['end_date'] as Timestamp?)?.toDate();
+        if (startDate == null || endDate == null) return false;
+
+        switch (index) {
+          case 0: // Upcoming
+            return startDate.isAfter(now);
+          case 1: // Ongoing
+            return startDate.isBefore(now) && endDate.isAfter(now);
+          case 2: // Completed
+            return endDate.isBefore(now);
+          default:
+            return false;
+        }
+      }).toList();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Event $name has been deleted.'),
-      ),
-    );
-    getEvents(); // Reload events after deletion
   }
 
   void showEventDetailsDialog(Map<String, dynamic> eventData) {
+    // Safely get dates
+    final startDate = (eventData['start_date'] as Timestamp?)?.toDate();
+    final endDate = (eventData['end_date'] as Timestamp?)?.toDate();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(eventData['name']),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Organization: ${eventData['organization']}'),
-              Text('Description: ${eventData['description']}'),
-              Text('Location: ${eventData['location']}'),
-              Text('Start: ${eventData['start_date'].toDate()}'),
-              Text('End: ${eventData['end_date'].toDate()}'),
-              Text('Capacity: ${eventData['capacity']}'),
-              // Weather forecast
-              FutureBuilder<Map<String, dynamic>?>(
-                future: fetchWeather(
-                  date: eventData['start_date']
-                      .toDate()
-                      .toString()
-                      .substring(0, 10),
-                  hour: eventData['start_date']
-                      .toDate()
-                      .hour, // Lấy giờ bắt đầu của sự kiện
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  }
+          title: Text(eventData['name'] ?? 'No name'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (eventData['image_url'] != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      eventData['image_url'],
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Text('Organization: ${eventData['organization'] ?? 'N/A'}'),
+                Text('Description: ${eventData['description'] ?? 'N/A'}'),
+                Text('Location: ${eventData['location'] ?? 'N/A'}'),
+                Text('Start: ${startDate?.toString() ?? 'N/A'}'),
+                Text('End: ${endDate?.toString() ?? 'N/A'}'),
+                Text('Capacity: ${eventData['capacity']?.toString() ?? 'N/A'}'),
+                if (startDate != null) // Only show weather if start date exists
+                  FutureBuilder<Map<String, dynamic>?>(
+                    future: fetchWeather(
+                      date: startDate.toString().substring(0, 10),
+                      hour: startDate.hour,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircularProgressIndicator();
+                      }
 
-                  if (snapshot.hasError) {
-                    return Text(
-                        'Failed to fetch weather data: ${snapshot.error}');
-                  }
+                      if (snapshot.hasError) {
+                        return Text(
+                            'Failed to fetch weather data: ${snapshot.error}');
+                      }
 
-                  if (snapshot.hasData) {
-                    final weatherData = snapshot.data!;
-                    final forecast = weatherData['forecast']['forecastday'][0];
-                    final condition = forecast['hour'][0]['condition']['text'];
-                    final tempC = forecast['hour'][0]['temp_c'];
-                    final icon = forecast['hour'][0]['condition']['icon'];
+                      if (snapshot.hasData) {
+                        final weatherData = snapshot.data!;
+                        final forecast =
+                            weatherData['forecast']['forecastday'][0];
+                        final condition =
+                            forecast['hour'][0]['condition']['text'];
+                        final tempC = forecast['hour'][0]['temp_c'];
+                        final icon = forecast['hour'][0]['condition']['icon'];
 
-                    return Column(
-                      children: [
-                        Image.network(
-                          'https:$icon',
-                          width: 50,
-                          height: 50,
-                        ),
-                        Text('Weather forecast: $condition, $tempC°C'),
-                      ],
-                    );
-                  }
+                        return Column(
+                          children: [
+                            Image.network(
+                              'https:$icon',
+                              width: 50,
+                              height: 50,
+                            ),
+                            Text('Weather forecast: $condition, $tempC°C'),
+                          ],
+                        );
+                      }
 
-                  return const Text('No weather data available');
-                },
-              ),
-            ],
+                      return const Text('No weather data available');
+                    },
+                  ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
+              child: const Text('Close'),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget buildEventCard(QueryDocumentSnapshot<Map<String, dynamic>> event) {
+    final data = event.data();
+    final now = DateTime.now();
+    final startDate = (data['start_date'] as Timestamp?)?.toDate();
+    final endDate = (data['end_date'] as Timestamp?)?.toDate();
+
+    if (startDate == null || endDate == null) {
+      return const SizedBox.shrink(); // Skip invalid events
+    }
+
+    // Determine card color based on event status
+    Color? cardColor;
+    if (endDate.isBefore(now)) {
+      cardColor = Colors.grey[200];
+    } else if (startDate.isBefore(now) && endDate.isAfter(now)) {
+      cardColor = Colors.green[100];
+    } else {
+      cardColor = Colors.amber[100];
+    }
+
+    return Card(
+      color: cardColor,
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: InkWell(
+        onTap: () => showEventDetailsDialog(data),
+        child: Row(
+          children: [
+            if (data['image_url'] != null)
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(data['image_url']),
+                    fit: BoxFit.cover,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    bottomLeft: Radius.circular(8),
+                  ),
+                ),
+              ),
+            Expanded(
+              child: ListTile(
+                title: Text(data['name'] ?? 'No name'),
+                subtitle: Text(
+                  '${startDate.toString().substring(0, 16)} - ${endDate.toString().substring(0, 16)}\n'
+                  '${data['location'] ?? 'No location'} | ${data['organization'] ?? 'No organization'}\n'
+                  '${checkInCounts[event.id] ?? 0}/${data['capacity'] ?? 0} people',
+                ),
+                isThreeLine: true,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -228,47 +307,8 @@ class _EventsScreenState extends State<EventsScreen> {
                     onRefresh: getEvents,
                     child: ListView.builder(
                       itemCount: filteredEvents.length,
-                      itemBuilder: (context, index) {
-                        final event = filteredEvents[index];
-                        final now = DateTime.now();
-                        final startDate = event['start_date'].toDate();
-                        final endDate = event['end_date'].toDate();
-
-                        // Determine card color based on event status
-                        Color? cardColor;
-                        if (endDate.isBefore(now)) {
-                          cardColor = Colors.grey[200]; // Completed event
-                        } else if (startDate.isBefore(now) &&
-                            endDate.isAfter(now)) {
-                          cardColor = Colors.green[100]; // Ongoing event
-                        } else if (startDate.isAfter(now)) {
-                          cardColor = Colors.amber[100]; // Upcoming event
-                        }
-
-                        return Card(
-                          color: cardColor,
-                          margin:
-                              EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: InkWell(
-                            onTap: () => showEventDetailsDialog(event.data()),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: ListTile(
-                                    title: Text(event['name']),
-                                    subtitle: Text(
-                                        '${event['start_date'].toDate().toString().substring(0, 16)} - ${event['end_date'].toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${checkInCounts[event.id] ?? 0}/${event['capacity']} people'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                      itemBuilder: (context, index) =>
+                          buildEventCard(filteredEvents[index]),
                     ),
                   ),
       ),
@@ -289,23 +329,7 @@ class _EventsScreenState extends State<EventsScreen> {
             label: 'Completed',
           ),
         ],
-        onTap: (index) {
-          final now = DateTime.now();
-          setState(() {
-            _selectedIndex = index;
-            filteredEvents = events?.docs
-                    .where((doc) =>
-                        !doc.data().containsKey('deleted_at') &&
-                        (index == 0
-                            ? doc['start_date'].toDate().isAfter(now)
-                            : index == 1
-                                ? doc['start_date'].toDate().isBefore(now) &&
-                                    doc['end_date'].toDate().isAfter(now)
-                                : doc['end_date'].toDate().isBefore(now)))
-                    .toList() ??
-                [];
-          });
-        },
+        onTap: filterEventsByStatus,
       ),
     );
   }

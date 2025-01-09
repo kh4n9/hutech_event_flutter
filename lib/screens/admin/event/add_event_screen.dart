@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AddEventScreen extends StatefulWidget {
   final event;
@@ -28,6 +30,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
   bool firstTime = true;
   String error = '';
   late FirebaseMessaging messaging;
+  String? image_url;
 
   @override
   void initState() {
@@ -40,6 +43,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
       start_date = widget.event['start_date'].toDate();
       end_date = widget.event['end_date'].toDate();
       capacity = widget.event['capacity'];
+      image_url = widget.event['image_url'];
     }
     setupFirebaseMessaging();
   }
@@ -55,13 +59,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
   }
 
   Future<String> getAccessToken() async {
-    final String serviceAccount = await rootBundle.loadString(
-        'assets/hutechevent-firebase-adminsdk-q5itl-0205e65f9d.json');
-    final Map<String, dynamic> credentials = json.decode(serviceAccount);
-
-    final String clientEmail = credentials['client_email'];
-    final String privateKeyString = credentials['private_key'];
-    final String tokenUri = credentials['token_uri'];
+    final String clientEmail = dotenv.env['CLIENT_EMAIL']!;
+    final String privateKeyString = dotenv.env['PRIVATE_KEY']!.replaceAll(
+      r'\n',
+      '\n',
+    );
+    final String tokenUri = dotenv.env['TOKEN_URI']!;
 
     // Create claims for FCM scope
     final claims = JsonWebTokenClaims.fromJson({
@@ -112,7 +115,8 @@ class _AddEventScreenState extends State<AddEventScreen> {
     }
   }
 
-  Future<void> sendNotificationToAllDevices(String body, String title) async {
+  Future<void> sendNotificationToAllDevices(
+      String body, String title, String image_url) async {
     const String endpoint =
         'https://fcm.googleapis.com/v1/projects/hutechevent/messages:send';
 
@@ -124,6 +128,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
         "notification": {
           "title": title,
           "body": body,
+          "image": image_url,
         },
         "android": {
           "priority": "high",
@@ -212,6 +217,22 @@ class _AddEventScreenState extends State<AddEventScreen> {
     );
   }
 
+  Future<void> pickImage() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      String? uploadedUrl = await _uploadImageToDiscord(result);
+      if (uploadedUrl != null) {
+        setState(() {
+          image_url = uploadedUrl;
+        });
+      }
+    }
+  }
+
   addEvent() async {
     try {
       await FirebaseFirestore.instance.collection('events').add({
@@ -223,6 +244,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
         'start_date': start_date,
         'end_date': end_date,
         'capacity': capacity,
+        'image_url': image_url,
         'created_at': FieldValue.serverTimestamp(),
         'deleted_at': null,
       });
@@ -230,11 +252,52 @@ class _AddEventScreenState extends State<AddEventScreen> {
       // Send notification about the new event
       await sendNotificationToAllDevices(
           '${nameController.text} at ${locationController.text}',
-          'New Event Added!');
+          'New Event Added!',
+          image_url ?? '');
     } catch (e) {
       setState(() {
         error = e.toString();
       });
+    }
+  }
+
+  _uploadImageToDiscord(FilePickerResult result) async {
+    final String botToken = dotenv.env['DISCORD_BOT_TOKEN']!;
+    final String channelId = dotenv.env['DISCORD_CHANNEL_ID']!;
+
+    if (result.files.isEmpty) {
+      print('Không chọn tệp nào');
+      return;
+    }
+
+    File file = File(result.files.single.path!);
+
+    try {
+      // Tạo multipart request
+      var uri =
+          Uri.parse("https://discord.com/api/v10/channels/$channelId/messages");
+      var request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bot $botToken'
+        ..fields['content'] =
+            nameController.text // Nội dung tin nhắn (tuỳ chọn)
+        ..files.add(await http.MultipartFile.fromPath('file', file.path));
+
+      // Gửi request
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        print('Ảnh đã được tải lên thành công!');
+        // get response body
+        var responseString = await response.stream.bytesToString();
+        final body = json.decode(responseString);
+        return body['attachments'][0]['url'];
+      } else {
+        print('Lỗi khi tải ảnh lên: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Lỗi: $e');
+      return null;
     }
   }
 
@@ -251,6 +314,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
         'start_date': start_date,
         'end_date': end_date,
         'capacity': capacity,
+        'image_url': image_url,
         'updated_at': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -271,82 +335,104 @@ class _AddEventScreenState extends State<AddEventScreen> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(labelText: 'Location'),
-              ),
-              TextField(
-                controller: organizationController,
-                decoration: const InputDecoration(labelText: 'Organization'),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      final DateTime date = await pickDateTime();
-                      setStartDate(date);
-                    },
-                    child: const Text('Start Date'),
-                  ),
-                  if (start_date != null)
-                    Text(
-                      start_date.toString(),
-                    )
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      final DateTime date = await pickDateTime();
-                      setEndDate(date);
-                    },
-                    child: const Text('End Date'),
-                  ),
-                  if (end_date != null)
-                    Text(
-                      end_date.toString(),
-                    )
-                ],
-              ),
-              TextFormField(
-                  initialValue: capacity?.toString(),
-                  onChanged: (value) => capacity = num.tryParse(value),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(labelText: "Capacity")),
-              if (error.isNotEmpty)
-                Text(
-                  error,
-                  style: const TextStyle(color: Colors.red),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name'),
                 ),
-              ElevatedButton(
-                onPressed: () async {
-                  // Changed to async
-                  if (widget.event != null) {
-                    await updateEvent();
-                  } else {
-                    await addEvent(); // Wait for addEvent to complete
-                  }
-                  Navigator.pop(context, true);
-                },
-                child: widget.event != null
-                    ? const Text('Update Event')
-                    : const Text('Add Event'),
-              ),
-            ],
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                ),
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(labelText: 'Location'),
+                ),
+                TextField(
+                  controller: organizationController,
+                  decoration: const InputDecoration(labelText: 'Organization'),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final DateTime date = await pickDateTime();
+                        setStartDate(date);
+                      },
+                      child: const Text('Start Date'),
+                    ),
+                    if (start_date != null)
+                      Text(
+                        start_date.toString(),
+                      )
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final DateTime date = await pickDateTime();
+                        setEndDate(date);
+                      },
+                      child: const Text('End Date'),
+                    ),
+                    if (end_date != null)
+                      Text(
+                        end_date.toString(),
+                      )
+                  ],
+                ),
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: pickImage,
+                        child: const Text('Choose Image'),
+                      ),
+                      if (image_url != null) ...[
+                        const SizedBox(height: 10),
+                        Image.network(
+                          image_url!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                TextFormField(
+                    initialValue: capacity?.toString(),
+                    onChanged: (value) => capacity = num.tryParse(value),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(labelText: "Capacity")),
+                if (error.isNotEmpty)
+                  Text(
+                    error,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Changed to async
+                    if (widget.event != null) {
+                      await updateEvent();
+                    } else {
+                      await addEvent(); // Wait for addEvent to complete
+                    }
+                    Navigator.pop(context, true);
+                  },
+                  child: widget.event != null
+                      ? const Text('Update Event')
+                      : const Text('Add Event'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

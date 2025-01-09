@@ -102,8 +102,8 @@ class _EventsScreenState extends State<EventsScreen> {
                       itemBuilder: (context, index) {
                         final event = filteredEvents[index];
                         final now = DateTime.now();
-                        final startDate = event['start_date'].toDate();
-                        final endDate = event['end_date'].toDate();
+                        final startDate = event['start_date']?.toDate();
+                        final endDate = event['end_date']?.toDate();
 
                         // Determine card color based on event status
                         Color? cardColor;
@@ -124,7 +124,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                 child: ListTile(
                                   title: Text(event['name']),
                                   subtitle: Text(
-                                      '${event['start_date'].toDate().toString().substring(0, 16)} - ${event['end_date'].toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${event['capacity']} people'),
+                                      '${event['start_date']?.toDate().toString().substring(0, 16)} - ${event['end_date']?.toDate().toString().substring(0, 16)} | ${event['location']} | ${event['organization']} | ${event['capacity']} people'),
                                 ),
                               ),
                               //button check in
@@ -160,9 +160,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                   }));
                                 },
                                 // Grey out button if event ended or capacity reached
-                                color: event['end_date']
-                                        .toDate()
-                                        .isBefore(DateTime.now())
+                                color: event['end_date']?.toDate().isBefore(now)
                                     ? Colors.grey
                                     : Colors.green,
                               ),
@@ -240,11 +238,11 @@ class _EventsScreenState extends State<EventsScreen> {
             _selectedIndex = index;
             filteredEvents = events?.docs
                     .where((doc) => (index == 0
-                        ? doc['start_date'].toDate().isAfter(now)
+                        ? doc['start_date']?.toDate().isAfter(now)
                         : index == 1
-                            ? doc['start_date'].toDate().isBefore(now) &&
-                                doc['end_date'].toDate().isAfter(now)
-                            : doc['end_date'].toDate().isBefore(now)))
+                            ? doc['start_date']?.toDate().isBefore(now) &&
+                                doc['end_date']?.toDate().isAfter(now)
+                            : doc['end_date']?.toDate().isBefore(now)))
                     .toList() ??
                 [];
           });
